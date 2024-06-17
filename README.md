@@ -56,17 +56,39 @@ There are no prerequisites for this package.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-
+## Performance
+In general, it takes around 40ns for generating one id.
+```sh
+go test ./... -run=none -bench=. -benchmem -benchtime=2s -memprofile=mem.pprof -cpuprofile=cpu.pprof -blockprofile=block.pprof
+goos: darwin
+goarch: arm64
+pkg: github.com/lochuhsin/re-snowflake
+Benchmark_GenerateId-8          63802024                37.14 ns/op            0 B/op          0 allocs/op
+Benchmark_GetDataCenterId-8     1000000000               0.3133 ns/op          0 B/op          0 allocs/op
+Benchmark_GetMachineId-8        1000000000               0.3137 ns/op          0 B/op          0 allocs/op
+Benchmark_GetSequenceNo-8       1000000000               0.3130 ns/op          0 B/op          0 allocs/op
+PASS
+ok      github.com/lochuhsin/re-snowflake       5.590s
+```
 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+```go
+	source, err := snowflake.NewSource(31, 31, 4095)
+    if err != nil {
+        ...
+    }
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+    id := source.Generate()
+    id.GetTime()
+    id.GetDataCenterId()
+    id.GetMachineId() 
+    id.GetSequenceNo()
+    id.GetId()
 
+```
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 
 
