@@ -7,14 +7,17 @@ import (
 )
 
 const (
-	SEQUENCE_NO_LENGTH    = 0xC
-	MACHINE_ID_LENGTH     = 0x5
-	DATA_CENTER_ID_LENGTH = 0x5
-	MACHINE_ID_MASK       = (1<<MACHINE_ID_LENGTH - 1)
-	DATA_CENTER_ID_MASK   = (1<<DATA_CENTER_ID_LENGTH - 1)
-	SEQUENCE_ID_MASK      = (1<<SEQUENCE_NO_LENGTH - 1)
-	BIT_SHIFT             = DATA_CENTER_ID_LENGTH + MACHINE_ID_LENGTH + SEQUENCE_NO_LENGTH
+	SEQUENCE_NO_LENGTH    uint64 = 0xC
+	MACHINE_ID_LENGTH     uint64 = 0x5
+	DATA_CENTER_ID_LENGTH uint64 = 0x5
+	MACHINE_ID_MASK       uint64 = (1<<MACHINE_ID_LENGTH - 1)
+	DATA_CENTER_ID_MASK   uint64 = (1<<DATA_CENTER_ID_LENGTH - 1)
+	SEQUENCE_ID_MASK      uint64 = (1<<SEQUENCE_NO_LENGTH - 1)
+	BIT_SHIFT             uint64 = DATA_CENTER_ID_LENGTH + MACHINE_ID_LENGTH + SEQUENCE_NO_LENGTH
 )
+
+// Since is set to the twitter snowflake Nov 04 2010 01:42:54 UTC in milliseconds
+var Since int64 = 1288834974657
 
 type Id struct {
 	bitset uint64
@@ -22,6 +25,7 @@ type Id struct {
 
 type Source struct {
 	preBitset uint64
+	since     time.Time
 	mu        sync.Mutex
 }
 
@@ -31,19 +35,21 @@ func NewSource(centerId, machineId, sequenceNo uint64) (Source, error) {
 	 * | 0 | 41 bit timestamp | 5 bit data center id | 5 bit machine id | 12 bit sequence id |
 	 * We build the first 22 bits of known values, the 41 bit timestamp will leave it to generate
 	 */
-	if centerId >= (1 << DATA_CENTER_ID_LENGTH) {
+	if centerId >= (DATA_CENTER_ID_MASK + 1) {
 		return *new(Source), errors.New("exceed data center id limit, 31")
 	}
 
-	if machineId >= (1<<MACHINE_ID_LENGTH + 1) {
+	if machineId >= (MACHINE_ID_MASK + 1) {
 		return *new(Source), errors.New("exceed machine id limit, 31")
 	}
 
-	if sequenceNo >= (1<<SEQUENCE_NO_LENGTH + 1) {
+	if sequenceNo >= (SEQUENCE_ID_MASK + 1) {
 		return *new(Source), errors.New("exceed sequence id limit, 4095")
 	}
+	now := time.Now()
 	return Source{
-		preBitset: BuildPreBitMask(centerId, machineId, sequenceNo),
+		preBitset: buildPreMask(centerId, machineId, sequenceNo),
+		since:     now.Add(time.Unix(Since/1000, (Since%1000)*1000000).Sub(now)),
 	}, nil
 }
 
@@ -51,7 +57,7 @@ func (s *Source) Generate() Id {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return Id{
-		bitset: (uint64(time.Now().UnixMilli()) << BIT_SHIFT) | s.preBitset,
+		bitset: (uint64(time.Since(s.since).Milliseconds()) << BIT_SHIFT) | s.preBitset,
 	}
 }
 
@@ -75,7 +81,7 @@ func (i *Id) GetId() uint64 {
 	return i.bitset
 }
 
-func BuildPreBitMask(centerId, machineId, sequenceNo uint64) uint64 {
+func buildPreMask(centerId, machineId, sequenceNo uint64) uint64 {
 	cMask := centerId << (MACHINE_ID_LENGTH + SEQUENCE_NO_LENGTH)
 	mMask := machineId << SEQUENCE_NO_LENGTH
 

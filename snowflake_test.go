@@ -30,7 +30,7 @@ func Test_SnowflakeValidParameterRange(t *testing.T) {
 	r := rand.New(source)
 	_, err := NewSource(uint64(r.Intn(32)), uint64(r.Intn(32)), uint64(r.Intn(4096)))
 	if err != nil {
-		t.Error("should have failed")
+		t.Error("should'n fail")
 	}
 }
 
