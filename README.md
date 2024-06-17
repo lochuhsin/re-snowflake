@@ -75,7 +75,7 @@ ok      github.com/lochuhsin/re-snowflake       5.590s
 ## Usage
 
 ```go
-	source, err := snowflake.NewSource(31, 31, 4095)
+    source, err := snowflake.NewSource(31, 31, 4095)
     if err != nil {
         ...
     }
